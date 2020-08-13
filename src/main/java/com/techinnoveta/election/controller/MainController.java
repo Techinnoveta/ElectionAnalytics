@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /*
@@ -28,23 +29,29 @@ public class MainController {
 
     @PostMapping(value="/load/district")
     @ResponseBody
-    public String loadAllDistrict() throws Exception {
-        mainService.loadAllDistrict();
+    public String loadAllDistrict(@RequestParam(name="year") String year) throws Exception {
+        mainService.loadAllDistrict(year);
         return "Success";
     }
 
-
     @PostMapping(value="/load/electorate")
     @ResponseBody
-    public String loadAllElectorate() throws Exception {
-        mainService.loadAllElectorate();
+    public String loadAllElectorate(@RequestParam(name="year") String year) throws Exception {
+        mainService.loadAllElectorate(year);
         return "Success";
     }
 
     @PostMapping(value="/load/parties")
     @ResponseBody
-    public String loadAllParties() throws Exception {
-        mainService.loadAllParties();
+    public String loadAllParties(@RequestParam(name="year") String year) throws Exception {
+        mainService.loadAllParties(year);
+        return "Success";
+    }
+
+    @PostMapping(value="/load/vote")
+    @ResponseBody
+    public String loadAllVotesData(@RequestParam(name="year") String year) throws Exception {
+        mainService.loadAllVotesData(year);
         return "Success";
     }
 

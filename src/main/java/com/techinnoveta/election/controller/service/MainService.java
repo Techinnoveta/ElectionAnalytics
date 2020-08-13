@@ -6,23 +6,23 @@ package com.techinnoveta.election.controller.service;
  * @use - TODO
  */
 
+import com.techinnoveta.election.controller.modal.ElectoralVote;
 import com.techinnoveta.election.controller.repo.HikariCPDataSource;
 import com.techinnoveta.election.controller.repo.MainRepo;
+import com.techinnoveta.election.util.CONSTANTS;
 import org.apache.http.client.methods.HttpGet;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
-import java.io.FileReader;
 import java.net.URL;
 import java.sql.Connection;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 @ComponentScan("com.techinnoveta.election")
@@ -38,186 +38,132 @@ public class MainService {
     @Autowired
     private HttpClientService httpClientService;
 
-    public void loadAllDistrict() throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
+    @Value("${election.result.endpoint}")
+    private String endPoint;
 
-        JSONObject jsonObject = (JSONObject) object;
+    public void loadAllDistrict(String year) throws Exception {
+        HttpGet request = new HttpGet(endPoint + "." + year + ".json");
 
-        HttpGet request = new HttpGet("https://election.newsfirst.lk/result/all-country-top?_=1597191020777");
-
-        // add request headers
-        request.addHeader("accept", "application/json, text/javascript, */*; q=0.01");
-        request.addHeader("content-type", "application/json");
-        request.addHeader("Cookie", "XSRF-TOKEN=eyJpdiI6InJscnU1MVMrSUdObUZzUysybFk4c2c9PSIsInZhbHVlIjoiUDhxNnk0eisxMWNzdmRyZW5IQkUvTkVQNUlWY0xQVnF2SDMvQnFxSU52QnhBT2llK3JtOTJ4MFgxSzkvaks5dyIsIm1hYyI6ImFlYzM3OWQ4OGEwMjBmNzZlYTA1ZWQyZmNlNTc0OWM2ZTBlMjVlNTg3NWE0Y2JhODY1MjgyOWNkNWRmMDkyNDEifQ%3D%3D; laravel_session=eyJpdiI6IlU1dlNxV2VLOW03bHVTUmZqUURuUWc9PSIsInZhbHVlIjoiVjdSMXdiOW9HcXNwQlpCZlFVcFlBOEZCVG1vNmJXRkFXb3poZU93dlBqTGFYVkZMb05ZaXJVRi9kcStFd0wwbyIsIm1hYyI6ImYxYTM4ODkxNWJkYjEyNjYwNjU1NDhlYzIzOGQ0Mjc2NjU1YWQyMDRhMjQ5MDZlMDQxMjg1ODZmNzU2NTk1MTYifQ%3D%3D");
-
-        jsonObject = httpClientService.sendGet(request);
-
-        JSONArray allDivision = (JSONArray) jsonObject.get("districtResult");
+        JSONArray jsonArray = httpClientService.sendGetArray(request);
 
         Connection con = hikariCPDataSource.getConnection();
 
-        Iterator<JSONObject> iterator = allDivision.iterator();
+        Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            String sql = "INSERT INTO district (name, district_id) VALUES (\'"+ obj.get("name") +"\',\'"+ obj.get("id") +"\') " +
-                    "ON CONFLICT DO NOTHING";
-            mainRepo.executeUpdate(con,sql);
+            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)){
+                String sql = "INSERT INTO electoral_districts(ed_code, name) VALUES (\'"+ obj.get("ed_code") +"\',\'"+ obj.get("ed_name") +"\') " +
+                        "ON CONFLICT DO NOTHING";
+                mainRepo.executeUpdate(con,sql);
+            }
+
         }
     }
 
-    public void loadAllElectorate() throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
+    public void loadAllElectorate(String year) throws Exception {
+        HttpGet request = new HttpGet(endPoint + "." + year + ".json");
 
-        AtomicReference<JSONObject> jsonObject = new AtomicReference<>((JSONObject) object);
-
-        String sql = "SELECT * FROM district ORDER BY district_id";
-        JSONArray jsonArray = mainRepo.getDataPaging(sql);
-        jsonArray.stream().forEach( json -> {
-            jsonObject.set((JSONObject) json);
-            try {
-                loadElectorateByDistrictId(jsonObject.get().get("district_id").toString());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    public void loadElectorateByDistrictId(String district_id) throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
-
-        JSONObject jsonObject = (JSONObject) object;
-
-        HttpGet request = new HttpGet("https://election.newsfirst.lk/result/new-result-district?district_id="+ district_id +"&type=all");
-
-        // add request headers
-        request.addHeader("accept", "application/json, text/javascript, */*; q=0.01");
-        request.addHeader("content-type", "application/json");
-        request.addHeader("Cookie", "XSRF-TOKEN=eyJpdiI6InJscnU1MVMrSUdObUZzUysybFk4c2c9PSIsInZhbHVlIjoiUDhxNnk0eisxMWNzdmRyZW5IQkUvTkVQNUlWY0xQVnF2SDMvQnFxSU52QnhBT2llK3JtOTJ4MFgxSzkvaks5dyIsIm1hYyI6ImFlYzM3OWQ4OGEwMjBmNzZlYTA1ZWQyZmNlNTc0OWM2ZTBlMjVlNTg3NWE0Y2JhODY1MjgyOWNkNWRmMDkyNDEifQ%3D%3D; laravel_session=eyJpdiI6IlU1dlNxV2VLOW03bHVTUmZqUURuUWc9PSIsInZhbHVlIjoiVjdSMXdiOW9HcXNwQlpCZlFVcFlBOEZCVG1vNmJXRkFXb3poZU93dlBqTGFYVkZMb05ZaXJVRi9kcStFd0wwbyIsIm1hYyI6ImYxYTM4ODkxNWJkYjEyNjYwNjU1NDhlYzIzOGQ0Mjc2NjU1YWQyMDRhMjQ5MDZlMDQxMjg1ODZmNzU2NTk1MTYifQ%3D%3D");
-
-        jsonObject = httpClientService.sendGet(request);
-
-        JSONArray allDivision = (JSONArray) jsonObject.get("allDivision");
+        JSONArray jsonArray = httpClientService.sendGetArray(request);
 
         Connection con = hikariCPDataSource.getConnection();
 
-        Iterator<JSONObject> iterator = allDivision.iterator();
+        Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            String sql = "INSERT INTO polling_division (electorate_id, name, district_id, div_id) VALUES " +
-                    "(\'"+ obj.get("id") +"\',\'"+ obj.get("name") +"\',\'"+ obj.get("district_id") +"\', \'"+ obj.get("div_id") +"\') " +
-                    "ON CONFLICT DO NOTHING";
-            mainRepo.executeUpdate(con,sql);
-        }
-    }
-
-    public void loadAllParties() throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
-
-        AtomicReference<JSONObject> jsonObject = new AtomicReference<>((JSONObject) object);
-
-        String sql = "SELECT * FROM district ORDER BY district_id";
-        JSONArray jsonArray = mainRepo.getDataPaging(sql);
-        jsonArray.stream().forEach( json -> {
-            jsonObject.set((JSONObject) json);
-            try {
-                loadParties(jsonObject.get().get("district_id").toString());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    public void loadParties(String district_id) throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
-
-        JSONObject jsonObject = (JSONObject) object;
-
-        HttpGet request = new HttpGet("https://election.newsfirst.lk/result/new-result-district?district_id="+ district_id +"&type=all");
-
-        // add request headers
-        request.addHeader("accept", "application/json, text/javascript, */*; q=0.01");
-        request.addHeader("content-type", "application/json");
-        request.addHeader("Cookie", "XSRF-TOKEN=eyJpdiI6InJscnU1MVMrSUdObUZzUysybFk4c2c9PSIsInZhbHVlIjoiUDhxNnk0eisxMWNzdmRyZW5IQkUvTkVQNUlWY0xQVnF2SDMvQnFxSU52QnhBT2llK3JtOTJ4MFgxSzkvaks5dyIsIm1hYyI6ImFlYzM3OWQ4OGEwMjBmNzZlYTA1ZWQyZmNlNTc0OWM2ZTBlMjVlNTg3NWE0Y2JhODY1MjgyOWNkNWRmMDkyNDEifQ%3D%3D; laravel_session=eyJpdiI6IlU1dlNxV2VLOW03bHVTUmZqUURuUWc9PSIsInZhbHVlIjoiVjdSMXdiOW9HcXNwQlpCZlFVcFlBOEZCVG1vNmJXRkFXb3poZU93dlBqTGFYVkZMb05ZaXJVRi9kcStFd0wwbyIsIm1hYyI6ImYxYTM4ODkxNWJkYjEyNjYwNjU1NDhlYzIzOGQ0Mjc2NjU1YWQyMDRhMjQ5MDZlMDQxMjg1ODZmNzU2NTk1MTYifQ%3D%3D");
-
-        jsonObject = httpClientService.sendGet(request);
-
-        JSONArray allDivision = (JSONArray) jsonObject.get("allDivision");
-
-        Connection con = hikariCPDataSource.getConnection();
-
-        Iterator<JSONObject> iterator = allDivision.iterator();
-        while (iterator.hasNext()) {
-            JSONObject obj = iterator.next();
-            JSONArray allParties = (JSONArray) obj.get("parties");
-            Iterator<JSONObject> objectIterator = allParties.iterator();
-            while (objectIterator.hasNext()) {
-                JSONObject parObject = objectIterator.next();
-                JSONObject party = (JSONObject) parObject.get("party");
-                String sql = "INSERT INTO parties( party_id, name, ref_code, logo, color, display_name, party_type)" +
-                        "VALUES (\'"+ party.get("id") +"\', " +
-                        "\'"+ party.get("name").toString().replace("\'", "\''") +"\', " +
-                        "\'"+ party.get("ref_code") +"\', " +
-                        "\'"+ party.get("logo") +"\', " +
-                        "\'"+ party.get("color") +"\', " +
-                        "\'"+ party.get("display_name").toString().replace("\'", "\''") +"\', " +
-                        "\'"+ party.get("party_type") +"\') " +
+            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+                String sql = "INSERT INTO public.polling_divisions(pd_code, name, ed_code) VALUES " +
+                        "(\'" + obj.get("pd_code") + "\',\'" + obj.get("pd_name") + "\',\'" + obj.get("ed_code") + "\') " +
                         "ON CONFLICT DO NOTHING";
                 mainRepo.executeUpdate(con, sql);
             }
         }
     }
 
-    public void loadAllVotesData() throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
+    public void loadAllParties(String year) throws Exception {
+        HttpGet request = new HttpGet(endPoint + "." + year + ".json");
 
-        AtomicReference<JSONObject> jsonObject = new AtomicReference<>((JSONObject) object);
-
-        String sql = "SELECT * FROM district ORDER BY district_id";
-        JSONArray jsonArray = mainRepo.getDataPaging(sql);
-        jsonArray.stream().forEach( json -> {
-            jsonObject.set((JSONObject) json);
-            try {
-                loadElectorateByDistrictId(jsonObject.get().get("district_id").toString());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    public void loadAllVotesDataByDistrictId(String district_id) throws Exception {
-        JSONParser parser = new JSONParser();
-        Object object = parser.parse(new FileReader(getFileFromResources()));
-
-        JSONObject jsonObject = (JSONObject) object;
-
-        HttpGet request = new HttpGet("https://election.newsfirst.lk/result/new-result-district?district_id="+ district_id +"&type=all");
-
-        // add request headers
-        request.addHeader("accept", "application/json, text/javascript, */*; q=0.01");
-        request.addHeader("content-type", "application/json");
-        request.addHeader("Cookie", "XSRF-TOKEN=eyJpdiI6InJscnU1MVMrSUdObUZzUysybFk4c2c9PSIsInZhbHVlIjoiUDhxNnk0eisxMWNzdmRyZW5IQkUvTkVQNUlWY0xQVnF2SDMvQnFxSU52QnhBT2llK3JtOTJ4MFgxSzkvaks5dyIsIm1hYyI6ImFlYzM3OWQ4OGEwMjBmNzZlYTA1ZWQyZmNlNTc0OWM2ZTBlMjVlNTg3NWE0Y2JhODY1MjgyOWNkNWRmMDkyNDEifQ%3D%3D; laravel_session=eyJpdiI6IlU1dlNxV2VLOW03bHVTUmZqUURuUWc9PSIsInZhbHVlIjoiVjdSMXdiOW9HcXNwQlpCZlFVcFlBOEZCVG1vNmJXRkFXb3poZU93dlBqTGFYVkZMb05ZaXJVRi9kcStFd0wwbyIsIm1hYyI6ImYxYTM4ODkxNWJkYjEyNjYwNjU1NDhlYzIzOGQ0Mjc2NjU1YWQyMDRhMjQ5MDZlMDQxMjg1ODZmNzU2NTk1MTYifQ%3D%3D");
-
-        jsonObject = httpClientService.sendGet(request);
-
-        JSONArray allDivision = (JSONArray) jsonObject.get("allDivision");
+        JSONArray jsonArray = httpClientService.sendGetArray(request);
 
         Connection con = hikariCPDataSource.getConnection();
 
-        Iterator<JSONObject> iterator = allDivision.iterator();
+        Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            String sql = "INSERT INTO polling_division (electorate_id, name, district_id, div_id) VALUES " +
-                    "(\'"+ obj.get("id") +"\',\'"+ obj.get("name") +"\',\'"+ obj.get("district_id") +"\', \'"+ obj.get("div_id") +"\') " +
-                    "ON CONFLICT DO NOTHING";
-            mainRepo.executeUpdate(con,sql);
+            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+                JSONArray partiesArray = (JSONArray) obj.get("by_party");
+                Iterator<JSONObject> iteratorParties = partiesArray.iterator();
+                while (iteratorParties.hasNext()) {
+                    JSONObject jsonObjParty = iteratorParties.next();
+                    String sql = "INSERT INTO public.parties_data(party_code, party_name) VALUES " +
+                            "(\'" + jsonObjParty.get("party_code") + "\',\'" + jsonObjParty.get("party_name").toString().replace("\'", "\''") + "\') " +
+                            "ON CONFLICT DO NOTHING";
+                    mainRepo.executeUpdate(con, sql);
+                }
+            }
         }
     }
+
+    public void loadAllVotesData(String year) throws Exception {
+        HttpGet request = new HttpGet(endPoint + "." + year + ".json");
+
+        ElectoralVote electoralVote = new ElectoralVote();
+
+        JSONArray jsonArray = httpClientService.sendGetArray(request);
+
+        Connection con = hikariCPDataSource.getConnection();
+
+        Iterator<JSONObject> iterator = jsonArray.iterator();
+        while (iterator.hasNext()) {
+            JSONObject obj = iterator.next();
+            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+
+                electoralVote.setYear(year);
+                electoralVote.setType(obj.get("type").toString());
+                electoralVote.setEd_code(obj.get("ed_code").toString());
+                electoralVote.setPd_code(obj.get("pd_code").toString());
+
+                JSONArray partiesArray = (JSONArray) obj.get("by_party");
+                Iterator<JSONObject> iteratorParties = partiesArray.iterator();
+
+                JSONObject summaryObj = (JSONObject) obj.get("summary");
+                electoralVote.setElectors(convertInteger(summaryObj.get("electors").toString()));
+                electoralVote.setPolled(convertInteger(summaryObj.get("polled").toString()));
+                electoralVote.setValid_vote(convertInteger(summaryObj.get("valid").toString()));
+                electoralVote.setRejected(convertInteger(summaryObj.get("rejected").toString()));
+                electoralVote.setPercent_polled(convertDouble(summaryObj.get("percent_polled").toString().replace("%", "")));
+                electoralVote.setPercent_valid(convertDouble(summaryObj.get("percent_valid").toString().replace("%", "")));
+                electoralVote.setPercent_rejected(convertDouble(summaryObj.get("percent_rejected").toString().replace("%", "")));
+
+                while (iteratorParties.hasNext()) {
+                    JSONObject jsonObjParty = iteratorParties.next();
+                    electoralVote.setParty_code(jsonObjParty.get("party_code").toString());
+                    electoralVote.setVote_count(convertInteger(jsonObjParty.get("vote_count").toString()));
+                    electoralVote.setVote_percentage(convertDouble(jsonObjParty.get("vote_percentage").toString().replace("%", "")));
+
+                    String sql = "INSERT INTO vote_data(type, year, vote_count, vote_percentage, electors, polled, rejected, percent_polled, " +
+                            "percent_valid, percent_rejected, pd_code, ed_code, party_code, valid_vote) " +
+                            "VALUES ('"+electoralVote.getType()+"', " +
+                            "'"+electoralVote.getYear()+"', " +
+                            "'"+electoralVote.getVote_count()+"', " +
+                            "'"+electoralVote.getVote_percentage()+"', " +
+                            "'"+electoralVote.getElectors()+"', " +
+                            "'"+electoralVote.getPolled()+"', " +
+                            "'"+electoralVote.getRejected()+"', " +
+                            "'"+electoralVote.getPercent_polled()+"', " +
+                            "'"+electoralVote.getPercent_valid()+"', " +
+                            "'"+electoralVote.getPercent_rejected()+"', " +
+                            "'"+electoralVote.getPd_code()+"', " +
+                            "'"+electoralVote.getEd_code()+"', " +
+                            "'"+electoralVote.getParty_code()+"', " +
+                            "'"+electoralVote.getValid_vote()+"') " +
+                            "ON CONFLICT DO NOTHING";
+                    mainRepo.executeUpdate(con, sql);
+                }
+
+            }
+        }
+    }
+
 
     // get file from classpath, resources folder
     private File getFileFromResources() {
@@ -231,5 +177,25 @@ public class MainService {
             return new File(resource.getFile());
         }
 
+    }
+
+    private int convertInteger(String value){
+        int val = 0;
+        try {
+            val = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            val = 0;
+        }
+        return val;
+    }
+
+    private double convertDouble(String value){
+        double val = 0;
+        try {
+            val = Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            val = 0;
+        }
+        return val;
     }
 }

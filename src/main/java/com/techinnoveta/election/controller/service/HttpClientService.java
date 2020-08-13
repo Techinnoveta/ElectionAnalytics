@@ -14,6 +14,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.springframework.stereotype.Component;
@@ -29,18 +30,14 @@ public class HttpClientService {
         httpClient.close();
     }
 
-    public JSONObject sendGet(HttpGet request) throws Exception {
+    public JSONObject sendGetObject(HttpGet request) throws Exception {
 
         JSONObject jsonObject = null;
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
 
-            // Get HttpResponse Status
-            System.out.println(response.getStatusLine().toString());
-
             HttpEntity entity = response.getEntity();
             Header headers = entity.getContentType();
-            System.out.println(headers);
 
             if (entity != null) {
                 JSONParser parser = new JSONParser();
@@ -61,6 +58,23 @@ public class HttpClientService {
             jsonObject = (JSONObject) parser.parse(EntityUtils.toString(response.getEntity()));
         }
         return jsonObject;
+    }
+
+    public JSONArray sendGetArray(HttpGet request) throws Exception {
+
+        JSONArray jsonArray = null;
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+
+            HttpEntity entity = response.getEntity();
+            Header headers = entity.getContentType();
+
+            if (entity != null) {
+                JSONParser parser = new JSONParser();
+                jsonArray = (JSONArray) parser.parse(EntityUtils.toString(entity));
+            }
+        }
+        return jsonArray;
     }
 
 }

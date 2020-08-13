@@ -20,7 +20,7 @@ class ElectionAnalyticsApplicationTests {
 
 	@Test
 	void loadAllDistrict() throws Exception {
-		mainService.loadAllDistrict();
+		mainService.loadAllDistrict("2019");
 	}
 
 

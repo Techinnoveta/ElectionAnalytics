@@ -34,7 +34,7 @@ public class HttpClientServiceTest {
         request.addHeader("content-type", "application/json");
         request.addHeader("Cookie", "XSRF-TOKEN=eyJpdiI6InJscnU1MVMrSUdObUZzUysybFk4c2c9PSIsInZhbHVlIjoiUDhxNnk0eisxMWNzdmRyZW5IQkUvTkVQNUlWY0xQVnF2SDMvQnFxSU52QnhBT2llK3JtOTJ4MFgxSzkvaks5dyIsIm1hYyI6ImFlYzM3OWQ4OGEwMjBmNzZlYTA1ZWQyZmNlNTc0OWM2ZTBlMjVlNTg3NWE0Y2JhODY1MjgyOWNkNWRmMDkyNDEifQ%3D%3D; laravel_session=eyJpdiI6IlU1dlNxV2VLOW03bHVTUmZqUURuUWc9PSIsInZhbHVlIjoiVjdSMXdiOW9HcXNwQlpCZlFVcFlBOEZCVG1vNmJXRkFXb3poZU93dlBqTGFYVkZMb05ZaXJVRi9kcStFd0wwbyIsIm1hYyI6ImYxYTM4ODkxNWJkYjEyNjYwNjU1NDhlYzIzOGQ0Mjc2NjU1YWQyMDRhMjQ5MDZlMDQxMjg1ODZmNzU2NTk1MTYifQ%3D%3D");
 
-        httpClientService.sendGet(request);
+        httpClientService.sendGetObject(request);
 
     }
 
