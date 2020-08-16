@@ -27,31 +27,59 @@ public class MainController {
     @Autowired
     private MainService mainService;
 
-    @PostMapping(value="/load/district")
+    @PostMapping(value = "/load/district")
     @ResponseBody
-    public String loadAllDistrict(@RequestParam(name="year") String year) throws Exception {
+    public String loadAllDistrict(@RequestParam(name = "year") String year) throws Exception {
         mainService.loadAllDistrict(year);
         return "Success";
     }
 
-    @PostMapping(value="/load/electorate")
+    @PostMapping(value = "/load/electorate")
     @ResponseBody
-    public String loadAllElectorate(@RequestParam(name="year") String year) throws Exception {
+    public String loadAllElectorate(@RequestParam(name = "year") String year) throws Exception {
         mainService.loadAllElectorate(year);
         return "Success";
     }
 
-    @PostMapping(value="/load/parties")
+    @PostMapping(value = "/load/parties")
     @ResponseBody
-    public String loadAllParties(@RequestParam(name="year") String year) throws Exception {
+    public String loadAllParties(@RequestParam(name = "year") String year) throws Exception {
         mainService.loadAllParties(year);
         return "Success";
     }
 
-    @PostMapping(value="/load/vote")
+    @PostMapping(value = "/load/vote")
     @ResponseBody
-    public String loadAllVotesData(@RequestParam(name="year") String year) throws Exception {
+    public String loadAllVotesData(@RequestParam(name = "year") String year) throws Exception {
         mainService.loadAllVotesData(year);
+        return "Success";
+    }
+
+    @PostMapping(value = "/load/seat")
+    @ResponseBody
+    public String loadAllSeatCountData(@RequestParam(name = "year") String year) throws Exception {
+        mainService.loadAllSeatCountData(year);
+        return "Success";
+    }
+
+    @PostMapping(value = "/load/elected/candidate")
+    @ResponseBody
+    public String loadAllEletedCandidate(@RequestParam(name = "year") String year) throws Exception {
+        mainService.loadAllElectedCandidateList(year);
+        return "Success";
+    }
+
+    @PostMapping(value = "/load/all")
+    @ResponseBody
+    public String loadAll(@RequestParam(name = "year") String year) throws Exception {
+
+        mainService.loadAllDistrict(year);
+        mainService.loadAllElectorate(year);
+        mainService.loadAllParties(year);
+        mainService.loadAllVotesData(year);
+        mainService.loadAllSeatCountData(year);
+        mainService.loadAllElectedCandidateList(year);
+
         return "Success";
     }
 

@@ -6,19 +6,14 @@ package com.techinnoveta.election.controller.repo;
  * @use - TODO
  */
 
-import java.sql.Connection;
-
-
-
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-
-
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
 
 @Component
 public final class HikariCPDataSource {
@@ -38,7 +33,7 @@ public final class HikariCPDataSource {
     private HikariDataSource ds;
     private Connection con;
 
-    public final Connection getConnection(){
+    public final Connection getConnection() {
 
         try {
 
@@ -60,14 +55,10 @@ public final class HikariCPDataSource {
         return null;
     }
 
-    public HikariCPDataSource(){
-
-
+    public HikariCPDataSource() {
 
 
     }
-
-
 
 
 }

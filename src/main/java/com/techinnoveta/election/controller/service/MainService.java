@@ -51,13 +51,18 @@ public class MainService {
         Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)){
-                String sql = "INSERT INTO electoral_districts(ed_code, name) VALUES (\'"+ obj.get("ed_code") +"\',\'"+ obj.get("ed_name") +"\') " +
+            if (obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+                String sql = "INSERT INTO electoral_districts(ed_code, name) VALUES (\'" + obj.get("ed_code") + "\',\'" + obj.get("ed_name") + "\') " +
                         "ON CONFLICT DO NOTHING";
-                mainRepo.executeUpdate(con,sql);
+                mainRepo.executeUpdate(con, sql);
             }
 
         }
+
+        // add National Record
+        String sql = "INSERT INTO electoral_districts(ed_code, name) VALUES ('" + CONSTANTS.NATIONAL_CODE + "', '" + "NATIONAL" + "') " +
+                "ON CONFLICT DO NOTHING";
+        mainRepo.executeUpdate(con, sql);
     }
 
     public void loadAllElectorate(String year) throws Exception {
@@ -70,7 +75,7 @@ public class MainService {
         Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+            if (obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
                 String sql = "INSERT INTO public.polling_divisions(pd_code, name, ed_code) VALUES " +
                         "(\'" + obj.get("pd_code") + "\',\'" + obj.get("pd_name") + "\',\'" + obj.get("ed_code") + "\') " +
                         "ON CONFLICT DO NOTHING";
@@ -89,7 +94,7 @@ public class MainService {
         Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+            if (obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
                 JSONArray partiesArray = (JSONArray) obj.get("by_party");
                 Iterator<JSONObject> iteratorParties = partiesArray.iterator();
                 while (iteratorParties.hasNext()) {
@@ -115,7 +120,7 @@ public class MainService {
         Iterator<JSONObject> iterator = jsonArray.iterator();
         while (iterator.hasNext()) {
             JSONObject obj = iterator.next();
-            if(obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
+            if (obj.get("type").equals(CONSTANTS.POLLING_VOTE)) {
 
                 electoralVote.setYear(year);
                 electoralVote.setType(obj.get("type").toString());
@@ -142,21 +147,21 @@ public class MainService {
 
                     String sql = "INSERT INTO vote_data(type, year, vote_count, vote_percentage, electors, polled, rejected, percent_polled, " +
                             "percent_valid, percent_rejected, pd_code, ed_code, party_code, valid_vote) " +
-                            "VALUES ('"+electoralVote.getType()+"', " +
-                            "'"+electoralVote.getYear()+"', " +
-                            "'"+electoralVote.getVote_count()+"', " +
-                            "'"+electoralVote.getVote_percentage()+"', " +
-                            "'"+electoralVote.getElectors()+"', " +
-                            "'"+electoralVote.getPolled()+"', " +
-                            "'"+electoralVote.getRejected()+"', " +
-                            "'"+electoralVote.getPercent_polled()+"', " +
-                            "'"+electoralVote.getPercent_valid()+"', " +
-                            "'"+electoralVote.getPercent_rejected()+"', " +
-                            "'"+electoralVote.getPd_code()+"', " +
-                            "'"+electoralVote.getEd_code()+"', " +
-                            "'"+electoralVote.getParty_code()+"', " +
-                            "'"+electoralVote.getValid_vote()+"') " +
-                            "ON CONFLICT DO NOTHING";
+                            "VALUES ('" + electoralVote.getType() + "', " +
+                            "'" + electoralVote.getYear() + "', " +
+                            "'" + electoralVote.getVote_count() + "', " +
+                            "'" + electoralVote.getVote_percentage() + "', " +
+                            "'" + electoralVote.getElectors() + "', " +
+                            "'" + electoralVote.getPolled() + "', " +
+                            "'" + electoralVote.getRejected() + "', " +
+                            "'" + electoralVote.getPercent_polled() + "', " +
+                            "'" + electoralVote.getPercent_valid() + "', " +
+                            "'" + electoralVote.getPercent_rejected() + "', " +
+                            "'" + electoralVote.getPd_code() + "', " +
+                            "'" + electoralVote.getEd_code() + "', " +
+                            "'" + electoralVote.getParty_code() + "', " +
+                            "'" + electoralVote.getValid_vote() + "') " +
+                            "ON CONFLICT (type, year, pd_code, ed_code, party_code) DO NOTHING";
                     mainRepo.executeUpdate(con, sql);
                 }
 
@@ -164,6 +169,83 @@ public class MainService {
         }
     }
 
+    public void loadAllSeatCountData(String year) throws Exception {
+        HttpGet request = new HttpGet(endPoint + "." + year + ".json");
+
+        JSONArray jsonArray = httpClientService.sendGetArray(request);
+
+        Connection con = hikariCPDataSource.getConnection();
+
+        Iterator<JSONObject> iterator = jsonArray.iterator();
+        while (iterator.hasNext()) {
+            JSONObject obj = iterator.next();
+
+            // Load distict_list_seat_count
+            if (obj.get("type").equals(CONSTANTS.POLLING_ELECTED_SEAT)) {
+                JSONArray partiesArray = (JSONArray) obj.get("by_party");
+                String ed_code = obj.get("ed_code").toString();
+                Iterator<JSONObject> iteratorParties = partiesArray.iterator();
+                while (iteratorParties.hasNext()) {
+                    JSONObject jsonObjParty = iteratorParties.next();
+                    if (null != jsonObjParty.get("seat_count") && Integer.parseInt(jsonObjParty.get("seat_count").toString()) > 0) {
+
+                        String sql = "INSERT INTO public.seat_data(party_code, ed_code, seat_count, seat_type, year) " +
+                                "VALUES ('" + jsonObjParty.get("party_code") + "', '" + ed_code + "', " +
+                                "'" + jsonObjParty.get("seat_count") + "', '" + CONSTANTS.ELECTED + "', '" + year + "') " +
+                                "ON CONFLICT (party_code, ed_code, seat_type, year) DO UPDATE SET seat_count = '" + jsonObjParty.get("seat_count") + "'";
+                        mainRepo.executeUpdate(con, sql);
+                    }
+                }
+            }
+
+            // Load national_list_seat_count
+            if (obj.get("type").equals(CONSTANTS.POLLING_NATIONAL_VOTE)) {
+                JSONArray partiesArray = (JSONArray) obj.get("by_party");
+                Iterator<JSONObject> iteratorParties = partiesArray.iterator();
+                while (iteratorParties.hasNext()) {
+                    JSONObject jsonObjParty = iteratorParties.next();
+                    if (null != jsonObjParty.get("national_list_seat_count") && Integer.parseInt(jsonObjParty.get("national_list_seat_count").toString()) > 0) {
+
+                        String sql = "INSERT INTO public.seat_data(party_code, ed_code, seat_count, seat_type, year) " +
+                                "VALUES ('" + jsonObjParty.get("party_code") + "', '" + CONSTANTS.NATIONAL_CODE + "', " +
+                                "'" + jsonObjParty.get("national_list_seat_count") + "', '" + CONSTANTS.ELECTED + "', '" + year + "') " +
+                                "ON CONFLICT (party_code, ed_code, seat_type, year) DO UPDATE SET seat_count = '" + jsonObjParty.get("seat_count") + "'";
+                        mainRepo.executeUpdate(con, sql);
+                    }
+                }
+            }
+        }
+    }
+
+    public void loadAllElectedCandidateList(String year) throws Exception {
+        HttpGet request = new HttpGet(endPoint + "." + year + ".json");
+
+        JSONArray jsonArray = httpClientService.sendGetArray(request);
+
+        Connection con = hikariCPDataSource.getConnection();
+
+        Iterator<JSONObject> iterator = jsonArray.iterator();
+        while (iterator.hasNext()) {
+            JSONObject obj = iterator.next();
+
+            if (obj.get("type").equals(CONSTANTS.POLLING_ELECTED_CANDIDATE)) {
+                JSONArray partiesArray = (JSONArray) obj.get("by_candidate");
+                String ed_code = obj.get("ed_code").toString();
+                Iterator<JSONObject> iteratorParties = partiesArray.iterator();
+                while (iteratorParties.hasNext()) {
+                    JSONObject jsonObjParty = iteratorParties.next();
+                    if (null != partiesArray) {
+
+                        String sql = "INSERT INTO public.elected_candidate(party_code, ed_code, candidate_name, year) " +
+                                "VALUES ('" + jsonObjParty.get("party_code") + "', '" + ed_code + "', " +
+                                "'" + jsonObjParty.get("candidate_name") + "', '" + year + "') " +
+                                "ON CONFLICT DO NOTHING";
+                        mainRepo.executeUpdate(con, sql);
+                    }
+                }
+            }
+        }
+    }
 
     // get file from classpath, resources folder
     private File getFileFromResources() {
@@ -179,7 +261,7 @@ public class MainService {
 
     }
 
-    private int convertInteger(String value){
+    private int convertInteger(String value) {
         int val = 0;
         try {
             val = Integer.parseInt(value);
@@ -189,7 +271,7 @@ public class MainService {
         return val;
     }
 
-    private double convertDouble(String value){
+    private double convertDouble(String value) {
         double val = 0;
         try {
             val = Double.parseDouble(value);
